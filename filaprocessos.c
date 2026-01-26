@@ -5,7 +5,6 @@
 
 #define MAX_CICLOS_POR_VEZ 100
 
-// Estrutura interna do Processo
 struct Processo {
   int id;
   float tempo_chegada;
@@ -14,26 +13,22 @@ struct Processo {
   struct Processo* proximo;
 };
 
-// Estrutura interna da Fila
 struct FilaProcessos {
   Processo* inicio;
   int tamanho;
 };
 
-// ========== FUNCOES BASICAS DO TAD ==========
-
-// Cria uma fila vazia
 FilaProcessos* criarFila() {
   FilaProcessos* fila = (FilaProcessos*)malloc(sizeof(FilaProcessos));
   if (fila == NULL) {
     return NULL;
   }
+
   fila->inicio = NULL;
   fila->tamanho = 0;
   return fila;
 }
 
-// Cria um processo individual
 Processo* criarProcesso(int id, float tempo, int prioridade, int ciclos) {
   Processo* novo = (Processo*)malloc(sizeof(Processo));
   if (novo == NULL) {
@@ -49,7 +44,6 @@ Processo* criarProcesso(int id, float tempo, int prioridade, int ciclos) {
   return novo;
 }
 
-// Destroi a fila e libera memoria
 void destroiFila(FilaProcessos* fila) {
   if (fila == NULL) {
     return;
@@ -58,6 +52,7 @@ void destroiFila(FilaProcessos* fila) {
   Processo* atual = fila->inicio;
   Processo* proximo;
 
+  // Libera cada processo da lista encadeada
   while (atual != NULL) {
     proximo = atual->proximo;
     free(atual);
@@ -67,19 +62,17 @@ void destroiFila(FilaProcessos* fila) {
   free(fila);
 }
 
-// ========== MERGESORT MODIFICADO (BONUS +1.0) ==========
-
-// Funcao de comparacao para ordenacao inicial
-// Retorna:  -1 se a vem antes, 1 se b vem antes, 0 se iguais
+// compara os dois processos para decidir qual vem primeiro na ordenacao inicial
+// retorna -1 se 'a' vem antes, 1 se 'b' vem antes, 0 se sao iguais
 int compararProcessosInicial(Processo* a, Processo* b) {
-  // Prioridade menor tem preferencia
+  // prioridade menor vem primeiro (2 antes de 4)
   if (a->prioridade < b->prioridade) {
     return -1;
   } else if (a->prioridade > b->prioridade) {
     return 1;
   }
 
-  // Se prioridades iguais, tempo de chegada menor tem preferencia
+  // segundo criterio, quem chegou primeiro vem antes
   if (a->tempo_chegada < b->tempo_chegada) {
     return -1;
   } else if (a->tempo_chegada > b->tempo_chegada) {
@@ -89,8 +82,8 @@ int compararProcessosInicial(Processo* a, Processo* b) {
   return 0;
 }
 
-// Divide a lista ao meio usando tecnica dos dois ponteiros
-// Retorna o inicio da segunda metade
+// divide a lista ao meio e retorna o inicio da segunda metade
+// um anda 1 posicao, outro anda 2 (dois ponteiros)
 Processo* dividirLista(Processo* inicio) {
   if (inicio == NULL || inicio->proximo == NULL) {
     return inicio;
@@ -99,23 +92,21 @@ Processo* dividirLista(Processo* inicio) {
   Processo* lento = inicio;
   Processo* rapido = inicio->proximo;
 
-  // Ponteiro lento avanca 1, rapido avanca 2
-  // Quando rapido chegar ao fim, lento estara no meio
+  // ponteiro rapido chega no fim, o lento vai ta no meio
   while (rapido != NULL && rapido->proximo != NULL) {
     lento = lento->proximo;
     rapido = rapido->proximo->proximo;
   }
 
-  // Divide a lista
+  // corta a lista no meio
   Processo* meio = lento->proximo;
   lento->proximo = NULL;
 
   return meio;
 }
 
-// Mescla duas listas ordenadas em uma unica lista ordenada
+// junta duas listas ja ordenadas em uma so
 Processo* mesclar(Processo* esquerda, Processo* direita) {
-  // Casos base
   if (esquerda == NULL) {
     return direita;
   }
@@ -125,7 +116,8 @@ Processo* mesclar(Processo* esquerda, Processo* direita) {
 
   Processo* resultado = NULL;
 
-  // Compara e escolhe qual processo vem primeiro
+  // compara os primeiros elementos e escolhe o menor
+  // depois chama recursivamente para o resto da lista
   if (compararProcessosInicial(esquerda, direita) <= 0) {
     resultado = esquerda;
     resultado->proximo = mesclar(esquerda->proximo, direita);
@@ -137,49 +129,41 @@ Processo* mesclar(Processo* esquerda, Processo* direita) {
   return resultado;
 }
 
-// MergeSort recursivo para lista encadeada
-// DIVISAO E CONQUISTA:
-// 1. Divide a lista ao meio
-// 2. Ordena recursivamente cada metade
-// 3. Mescla as duas metades ordenadas
+// MergeSort: divide a lista ao meio, ordena cada parte, e depois junta tudo
 Processo* mergeSort(Processo* inicio) {
-  // Caso base:  lista vazia ou com 1 elemento ja esta ordenada
+  // lista com 0 ou 1 elemento ja esta ordenada
   if (inicio == NULL || inicio->proximo == NULL) {
     return inicio;
   }
-
-  // DIVISAO:  Divide a lista ao meio
   Processo* meio = dividirLista(inicio);
-
-  // CONQUISTA: Ordena recursivamente cada metade
+  // ordena pela metada recursivamente
   Processo* esquerda = mergeSort(inicio);
   Processo* direita = mergeSort(meio);
 
-  // COMBINACAO: Mescla as duas metades ordenadas
+  // junta
   return mesclar(esquerda, direita);
 }
 
-// Adiciona processos iniciais usando MergeSort (BONUS!)
+// aq ordenacao inicial que considera prioridade e tempo de chegada
 void adicionaProcessosIniciais(FilaProcessos* fila, Processo** processos,
                                int n) {
   if (fila == NULL || processos == NULL || n <= 0) {
     return;
   }
 
-  // Criar lista encadeada com os processos
+  // liga todos os processos em uma lista encadeada
   for (int i = 0; i < n - 1; i++) {
     processos[i]->proximo = processos[i + 1];
   }
   processos[n - 1]->proximo = NULL;
 
-  // Ordenar usando MergeSort modificado
+  // ordena a lista usando MergeSort e guarda na fila
   fila->inicio = mergeSort(processos[0]);
   fila->tamanho = n;
 }
 
-// ========== INSERTION SORT PARA REINSERCAO ==========
-
-// Reinserir processo usando Insertion Sort (considera apenas prioridade)
+// coloca dnv um processo na fila usando o Insertion Sort (aqui so considera
+// prioridade (ignora tempo))
 void reinserirProcesso(FilaProcessos* fila, Processo* processo) {
   if (fila == NULL || processo == NULL) {
     return;
@@ -187,7 +171,8 @@ void reinserirProcesso(FilaProcessos* fila, Processo* processo) {
 
   processo->proximo = NULL;
 
-  // Caso 1: Fila vazia ou inserir no inicio
+  // ae fila vazia ou processo tem prioridade menor que o primeiro, insere no
+  // inicio
   if (fila->inicio == NULL || processo->prioridade < fila->inicio->prioridade) {
     processo->proximo = fila->inicio;
     fila->inicio = processo;
@@ -195,8 +180,8 @@ void reinserirProcesso(FilaProcessos* fila, Processo* processo) {
     return;
   }
 
-  // Caso 2: Procurar posicao correta na fila
-  // Reinsercao considera APENAS prioridade (nao tempo de chegada)
+  // percorre a fila ate achar onde inserir e
+  // coloca antes do primeiro processo com prioridade maior
   Processo* atual = fila->inicio;
 
   while (atual->proximo != NULL) {
@@ -206,27 +191,25 @@ void reinserirProcesso(FilaProcessos* fila, Processo* processo) {
     atual = atual->proximo;
   }
 
-  // Inserir na posicao encontrada
+  // coloca o processo na posicao correta
   processo->proximo = atual->proximo;
   atual->proximo = processo;
   fila->tamanho++;
 }
 
-// ========== ESCALONADOR ==========
-
-// Processa a fila de processos
+// aq simula o uso da CPU processando tudo que ta na fila
 void escalonador(FilaProcessos* fila) {
   if (fila == NULL) {
     return;
   }
 
   while (fila->inicio != NULL) {
-    // Remove o primeiro processo da fila
+    // remove o primeiro processo da fila
     Processo* processo = fila->inicio;
     fila->inicio = processo->proximo;
     fila->tamanho--;
 
-    // Determina quantos ciclos vai executar
+    // quantas vezes vai executar
     int ciclos_executar;
     if (processo->ciclos_restantes > MAX_CICLOS_POR_VEZ) {
       ciclos_executar = MAX_CICLOS_POR_VEZ;
@@ -234,23 +217,21 @@ void escalonador(FilaProcessos* fila) {
       ciclos_executar = processo->ciclos_restantes;
     }
 
-    // Simula execucao na CPU com loops vazios
+    // simula uso da CPU com loop vazio
     for (int i = 0; i < ciclos_executar; i++) {
-      // Simula processamento (loop vazio)
+      // consome tempo de processamento
     }
 
-    // Imprime log do atendimento
+    // output: ID, prioridade atual, quantos ciclos executou
     printf("%d %d %d\n", processo->id, processo->prioridade, ciclos_executar);
 
-    // Atualiza ciclos restantes
     processo->ciclos_restantes -= ciclos_executar;
 
-    // Se ainda faltam ciclos, reinserir na fila com prioridade incrementada
+    // aumenta a prioridade e coloca de volta na fila se ainda faltam ciclos
     if (processo->ciclos_restantes > 0) {
-      processo->prioridade++;             // Incrementa prioridade
-      reinserirProcesso(fila, processo);  // Usa Insertion Sort
+      processo->prioridade++;
+      reinserirProcesso(fila, processo);
     } else {
-      // Processo finalizado, libera memoria
       free(processo);
     }
   }
